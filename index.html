@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wire Transfer Application MV</title>
+    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+    <style>
+        body { background-color: #1e1e1e; color: #d4d4d4; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; padding-bottom: 50px; }
+        .container { width: 95%; max-width: 1000px; padding: 20px; }
+        .card { background: #2d2d2d; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); border: 1px solid #333; }
+        h1, h2, h3 { color: #ffffff; border-bottom: 1px solid #444; padding-bottom: 10px; }
+        .section-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; }
+        .data-block { background: #353535; padding: 15px; border-radius: 6px; border-left: 4px solid #007acc; }
+        .bank-block { border-left-color: #4caf50; }
+        .lodger-block { border-left-color: #ff9800; }
+        .bene-block { border-left-color: #e91e63; }
+        .preview-block { border-left-color: #007acc; background: #252525; padding: 20px; border: 1px dashed #555; margin-top: 20px; }
+        h4 { margin: 0 0 10px 0; color: #aaa; text-transform: uppercase; font-size: 0.75em; letter-spacing: 1px; }
+        .field-group { margin-bottom: 10px; }
+        .field-group label { font-size: 0.75em; color: #888; margin-bottom: 2px; display: block; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 8px; background: #252525; border: 1px solid #444; color: #fff; border-radius: 4px; box-sizing: border-box; }
+        button { padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px 2px; border: none; font-weight: 600; transition: 0.2s; }
+        .btn-main { background: #3e3e3e; color: white; }
+        .btn-primary { background: #007acc; color: white; }
+        .btn-share { background: #25d366; color: white; }
+        .btn-update { background: #ffcc00; color: #1e1e1e; }
+        .btn-delete { background: #a83232; color: white; font-size: 0.8em; }
+        .list-container { max-height: 200px; overflow-y: auto; background: #252525; padding: 10px; border-radius: 4px; margin-bottom: 15px; }
+        .list-item { padding: 12px; margin-bottom: 5px; background: #333; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border: 2px solid transparent; }
+        .list-item.selected { border-color: #ffcc00; background: #4d4322; color: #ffcc00; }
+        .hidden { display: none; }
+        .export-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; border-top: 1px solid #444; padding-top: 20px; }
+        .control-group { display: flex; flex-direction: column; gap: 5px; }
+        .control-group label { font-size: 0.7em; color: #888; text-transform: uppercase; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>BOC Wire Transfer Automator</h1>
+
+    <div id="homePage">
+        <div class="card">
+            <h2>Step 1: Select Bank</h2>
+            <button class="btn-primary" onclick="showPage('bocPage')">Bank of Ceylon (Maldives)</button>
+        </div>
+        <div class="card" style="display: flex; gap:10px;">
+            <button class="btn-main" style="flex:1; padding: 40px;" onclick="showPage('companyPage')">MANAGE COMPANIES</button>
+            <button class="btn-main" style="flex:1; padding: 40px;" onclick="showPage('beneficiaryPage')">MANAGE BENEFICIARIES</button>
+        </div>
+        <div class="card">
+            <h3>Data Management (Backup/Transfer)</h3>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-main" style="flex:1" onclick="exportData()">Backup Data (Export JSON)</button>
+                <button class="btn-main" style="flex:1" onclick="importData()">Restore Data (Import JSON)</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="companyPage" class="hidden">
+        <button class="btn-main" onclick="showPage('homePage')">← Back Home</button>
+        <div class="card">
+            <h2>Saved Companies</h2>
+            <div id="companyList" class="list-container"></div>
+        </div>
+        <div class="card">
+            <h2 id="compFormTitle">Add New Company</h2>
+            <input type="hidden" id="editCompId">
+            <div class="section-grid">
+                <div class="data-block">
+                    <h4>Section A: Applicant Details</h4>
+                    <div class="field-group"><label>Company Name</label><input type="text" id="compName"></div>
+                    <div class="field-group"><label>Address</label><textarea id="compAddress"></textarea></div>
+                    <div class="field-group"><label>Registration No.</label><input type="text" id="compReg"></div>
+                    <div class="field-group"><label>Contact No.</label><input type="text" id="compContact"></div>
+                    <div class="field-group"><label>WP / PP No.</label><input type="text" id="compWpPp"></div>
+                    <div class="field-group"><label>Email</label><input type="text" id="compEmail"></div>
+                </div>
+                <div class="data-block lodger-block">
+                    <h4>Section B: Lodger Details</h4>
+                    <div class="field-group"><label>Full Name</label><input type="text" id="lodgerName"></div>
+                    <div class="field-group"><label>Position / Title</label><input type="text" id="lodgerTitle"></div>
+                    <div class="field-group"><label>Passport / NIC No.</label><input type="text" id="lodgerNic"></div>
+                    <div class="field-group"><label>Phone No.</label><input type="text" id="lodgerPhone"></div>
+                    <div class="field-group"><label>Mobile No.</label><input type="text" id="lodgerMobile"></div>
+                    <div class="field-group"><label>Signature Full Name (Page 2)</label><input type="text" id="sigName"></div>
+                </div>
+            </div>
+            <div class="data-block bank-block" style="margin-top:20px;">
+                <h4>Your BOC Accounts</h4>
+                <div class="section-grid">
+                    <div class="field-group"><label>BOC MVR Account</label><input type="text" id="bank_boc_mvr"></div>
+                    <div class="field-group"><label>BOC USD Account</label><input type="text" id="bank_boc_usd"></div>
+                </div>
+            </div>
+            <button id="compSaveBtn" class="btn-primary" onclick="saveCompany()">Save Company</button>
+            <button id="compUpdateBtn" class="btn-update hidden" onclick="updateCompany()">Confirm Update</button>
+            <button id="compCancelBtn" class="btn-main hidden" onclick="resetCompanyForm()">Cancel</button>
+        </div>
+    </div>
+
+    <div id="beneficiaryPage" class="hidden">
+        <button class="btn-main" onclick="showPage('homePage')">← Back Home</button>
+        <div class="card">
+            <h2>Saved Beneficiaries</h2>
+            <div id="beneList" class="list-container"></div>
+        </div>
+        <div class="card">
+            <h2 id="beneFormTitle">Add New Beneficiary</h2>
+            <input type="hidden" id="editBeneId">
+            <div class="section-grid">
+                <div class="data-block bene-block">
+                    <h4>Receiver Details</h4>
+                    <div class="field-group"><label>Beneficiary Name</label><input type="text" id="beneName"></div>
+                    <div class="field-group"><label>Address</label><textarea id="beneAddress"></textarea></div>
+                    <div class="field-group"><label>Account No.</label><input type="text" id="beneAcc"></div>
+                </div>
+                <div class="data-block bank-block">
+                    <h4>Bank Details</h4>
+                    <div class="field-group"><label>Bank Name</label><input type="text" id="beneBank"></div>
+                    <div class="field-group"><label>Bank Address</label><input type="text" id="beneBankAddr"></div>
+                    <div class="field-group"><label>SWIFT Code</label><input type="text" id="beneSwift"></div>
+                </div>
+            </div>
+            <div class="data-block lodger-block" style="margin-top:20px;">
+                <h4>Correspondent Bank (Optional)</h4>
+                <div class="section-grid">
+                    <div class="field-group"><label>Bank Name</label><input type="text" id="corrBank"></div>
+                    <div class="field-group"><label>SWIFT Code</label><input type="text" id="corrSwift"></div>
+                </div>
+            </div>
+            <button id="beneSaveBtn" class="btn-primary" onclick="saveBeneficiary()">Save Beneficiary</button>
+            <button id="beneUpdateBtn" class="btn-update hidden" onclick="updateBeneficiary()">Confirm Update</button>
+            <button id="beneCancelBtn" class="btn-main hidden" onclick="resetBeneForm()">Cancel</button>
+        </div>
+    </div>
+
+    <div id="bocPage" class="hidden">
+        <button class="btn-main" onclick="showPage('homePage')">← Back Home</button>
+        <div class="card">
+            <h2>Step 2: Create SWIFT Transfer</h2>
+            <div class="section-grid">
+                <div class="field-group"><label>Date (DDMMYYYY)</label><input type="text" id="transferDate"></div>
+                <div class="field-group"><label>Sender (Company)</label><select id="selectCompany"></select></div>
+            </div>
+            <div class="section-grid">
+                <div class="field-group"><label>Receiver (Beneficiary)</label><select id="selectBene"></select></div>
+                <div class="field-group"><label>Currency</label><select id="currency" onchange="updateWords()"><option value="USD">USD</option><option value="MVR">MVR</option></select></div>
+            </div>
+            <div class="field-group"><label>Amount (Figures)</label><input type="number" id="amount" step="0.01" oninput="updateWords()"></div>
+            <div class="field-group"><label>Amount in Words</label><textarea id="amountInWords" readonly style="color:#ffcc00; font-weight:bold;"></textarea></div>
+            <div class="field-group"><label>Purpose of Payment (Mandatory)</label><input type="text" id="purpose" placeholder="e.g. PAYMENT FOR INVOICE #123"></div>
+            
+            <button class="btn-main" style="width:100%; margin-top:10px;" onclick="generatePreview()">PREVIEW & VERIFY</button>
+            
+            <div id="previewArea" class="hidden preview-block">
+                <h3>Final Verification</h3>
+                <div id="previewContent" style="margin-bottom: 20px;"></div>
+
+                <div class="export-controls">
+                    <div class="control-group">
+                        <label>Standard Download (PC)</label>
+                        <button class="btn-primary" onclick="generateBocPDF('full', false)">Download Full File</button>
+                        <button class="btn-primary" onclick="generateBocPDF('p1', false)">Page 1 Only</button>
+                        <button class="btn-primary" onclick="generateBocPDF('p2', false)">Page 2 Only</button>
+                    </div>
+                    <div class="control-group">
+                        <label>Fast Share (Mobile/WhatsApp)</label>
+                        <button class="btn-share" onclick="generateBocPDF('full', true)">Share Full File</button>
+                        <button class="btn-share" onclick="generateBocPDF('p1', true)">Share Page 1</button>
+                        <button class="btn-share" onclick="generateBocPDF('p2', true)">Share Page 2</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let db = JSON.parse(localStorage.getItem('tt_data')) || { companies: [], beneficiaries: [] };
+    
+    // Updated Mapping Config [cite: 2, 3]
+    const config = {
+        "date": {"x1": 45, "y1": 660, "size": 15, "spaced": true, "wrap": 0, "x2": 0, "y2": 0, "pg": 0},
+        "a_name": {"x1": 60, "y1": 605, "size": 12, "spaced": false, "wrap": 0, "x2": 0, "y2": 0, "pg": 0},
+        "a_addr": {"x1": 60, "y1": 590, "size": 7, "spaced": false, "wrap": 65, "x2": 60, "y2": 577, "pg": 0},
+        "a_reg": {"x1": 93, "y1": 559, "size": 13, "spaced": true, "wrap": 0, "x2": 0, "y2": 0, "pg": 0},
+        "a_contact": {"x1": 93, "y1": 539, "size": 13, "spaced": true, "wrap": 0, "x2": 0, "y2": 0, "pg": 0},
+        "a_wppp": {"x1": 93, "y1": 519, "size": 13, "spaced": true, "wrap": 0, "x2": 0, "y2": 0, "pg": 0},
+        "a_email": {"x1": 95, "y1": 503, "size": 9, "spaced": false, "wrap": 0, "x2": 0, "y2": 0, "pg": 0},
+        "b_name": {"x1": 305, "y1": 606, "size": 12, "spaced": false, "wrap": 0, "x2": 0, "y2": 0, "pg": 0},
+        "b_title": {"x1": 335, "y1": 580, "size": 12, "spaced": false, "wrap": 0, "x2": 0, "y2": 0, "pg": 0},
+        "b_nic": {"x1": 356, "y1": 559, "size": 13, "spaced": true, "wrap": 0, "x2": 0, "y2": 0, "pg": 0},
+        "b_phone": {"x1": 358, "y1": 539, "size": 13, "spaced": true, "wrap": 0, "x2": 0, "y2": 0, "pg": 0},
+        "b_mobile": {"x1": 358, "y1": 519, "size": 13, "spaced": true, "wrap": 0, "x2": 0, "y2": 0, "pg": 0},
+        "tt_cur": {"x1": 130, "y1": 475, "size": 10, "spaced": false, "wrap": 0, "x2": 0, "y2": 0, "pg": 0},
+        "tt_amt": {"x1": 400, "y1": 475, "size": 10, "spaced": false, "wrap": 0, "x2": 0, "y2": 0, "pg": 0},
+        "tt_words": {"x1": 130, "y1": 463, "size": 7, "spaced": false, "wrap": 100, "x2": 130, "y2": 454, "pg": 0},
+        "bene_name": {"x1": 130, "y1": 440, "size": 8, "spaced": false, "wrap": 75, "x2": 130, "y2": 432, "pg": 0},
+        "bene_addr": {"x1": 130, "y1": 420, "size": 8, "spaced": false, "wrap": 75, "x2": 130, "y2": 410, "pg": 0},
+        "bene_bank": {"x1": 130, "y1": 380, "size": 8, "spaced": false, "wrap": 75, "x2": 130, "y2": 409, "pg": 0},
+        "bene_bankaddr": {"x1": 130, "y1": 368, "size": 7, "spaced": false, "wrap": 75, "x2": 130, "y2": 360, "pg": 0},
+        "bene_acc": {"x1": 139, "y1": 339, "size": 13, "spaced": true, "wrap": 0, "x2": 0, "y2": 0, "pg": 0},
+        "bene_swift": {"x1": 138, "y1": 315, "size": 13, "spaced": true, "wrap": 0, "x2": 0, "y2": 0, "pg": 0},
+        "corr_bank": {"x1": 130, "y1": 298, "size": 8, "spaced": false, "wrap": 75, "x2": 130, "y2": 289, "pg": 0},
+        "corr_swift": {"x1": 138, "y1": 272, "size": 13, "spaced": true, "wrap": 0, "x2": 0, "y2": 0, "pg": 0},
+        "tt_purpose": {"x1": 134, "y1": 229, "size": 11, "spaced": false, "wrap": 80, "x2": 136, "y2": 215, "pg": 0},
+        "acc_usd": {"x1": 113, "y1": 185, "size": 12, "spaced": true, "wrap": 0, "x2": 0, "y2": 0, "pg": 0},
+        "acc_mvr": {"x1": 113, "y1": 155, "size": 12, "spaced": true, "wrap": 0, "x2": 0, "y2": 0, "pg": 0},
+        "sig_name": {"x1": 133, "y1": 446, "size": 11, "spaced": false, "wrap": 0, "x2": 0, "y2": 0, "pg": 1}
+    };
+
+    function showPage(p) {
+        document.querySelectorAll('.container > div').forEach(d => d.classList.add('hidden'));
+        document.getElementById(p).classList.remove('hidden');
+        if(p === 'bocPage') {
+            refreshSelectors();
+            const t = new Date();
+            document.getElementById('transferDate').value = `${String(t.getDate()).padStart(2,'0')}${String(t.getMonth()+1).padStart(2,'0')}${t.getFullYear()}`;
+        }
+        if(p === 'companyPage' || p === 'beneficiaryPage') renderLists();
+    }
+
+    function sync() { localStorage.setItem('tt_data', JSON.stringify(db)); }
+
+    function exportData() {
+        const data = localStorage.getItem('tt_data');
+        if(!data) return alert("No data to export!");
+        const blob = new Blob([data], {type: 'application/json'});
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `BOC_WireTransfer_Backup.json`;
+        link.click();
+    }
+
+    function importData() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = e => {
+            const reader = new FileReader();
+            reader.onload = r => {
+                try {
+                    JSON.parse(r.target.result);
+                    localStorage.setItem('tt_data', r.target.result);
+                    alert("Data Restored!");
+                    location.reload();
+                } catch(e) { alert("Invalid file."); }
+            };
+            reader.readAsText(e.target.files[0]);
+        };
+        input.click();
+    }
+
+    function smartWrap(text, limit) {
+        if (!text || text.length <= limit) return [text || "", ""];
+        let edge = text.lastIndexOf(" ", limit);
+        if (edge === -1) edge = limit;
+        return [text.substring(0, edge).trim(), text.substring(edge).trim()];
+    }
+
+    function spaceString(s) { return (s || '').split('').join(' '); }
+
+    function numberToWords(num, currency) {
+        if (!num || isNaN(num)) return "";
+        const ones = ["", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN", "SIXTEEN", "SEVENTEEN", "EIGHTEEN", "NINETEEN"];
+        const tens = ["", "", "TWENTY", "THIRTY", "FORTY", "FIFTY", "SIXTY", "SEVENTY", "EIGHTY", "NINETY"];
+        const convert = (n) => {
+            if (n < 20) return ones[n];
+            if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 !== 0 ? " " + ones[n % 10] : "");
+            if (n < 1000) return ones[Math.floor(n / 100)] + " HUNDRED" + (n % 100 !== 0 ? " " + convert(n % 100) : "");
+            if (n < 1000000) return convert(Math.floor(n / 1000)) + " THOUSAND" + (n % 1000 !== 0 ? " " + convert(n % 1000) : "");
+            return "";
+        };
+        const parts = parseFloat(num).toFixed(2).split(".");
+        let result = convert(parseInt(parts[0]));
+        if (currency === "USD") { result += " US DOLLARS"; if (parseInt(parts[1]) > 0) result += " AND " + convert(parseInt(parts[1])) + " CENTS"; }
+        else { result += " MALDIVIAN RUFIYAA"; if (parseInt(parts[1]) > 0) result += " AND " + convert(parseInt(parts[1])) + " LAARI"; }
+        return result + " ONLY";
+    }
+
+    function updateWords() { document.getElementById('amountInWords').value = numberToWords(document.getElementById('amount').value, document.getElementById('currency').value); }
+
+    function renderLists() {
+        const selC = document.getElementById('editCompId').value;
+        document.getElementById('companyList').innerHTML = db.companies.map(c => `<div class="list-item ${c.id == selC ? 'selected' : ''}" onclick="editCompany(${c.id})"><span>${c.name}</span><button class="btn-delete" onclick="event.stopPropagation(); deleteCompany(${c.id})">Del</button></div>`).join('');
+        const selB = document.getElementById('editBeneId').value;
+        document.getElementById('beneList').innerHTML = db.beneficiaries.map(b => `<div class="list-item ${b.id == selB ? 'selected' : ''}" onclick="editBene(${b.id})"><span>${b.name}</span><button class="btn-delete" onclick="event.stopPropagation(); deleteBene(${b.id})">Del</button></div>`).join('');
+    }
+
+    function refreshSelectors() {
+        document.getElementById('selectCompany').innerHTML = db.companies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+        document.getElementById('selectBene').innerHTML = db.beneficiaries.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+    }
+
+    function saveCompany() { const d = getCompData(); d.id = Date.now(); db.companies.push(d); sync(); resetCompanyForm(); renderLists(); alert("Company Saved!"); }
+    function updateCompany() { if(!confirm("Confirm Update?")) return; const id = parseInt(document.getElementById('editCompId').value); const idx = db.companies.findIndex(i => i.id === id); db.companies[idx] = {...getCompData(), id: id}; sync(); resetCompanyForm(); renderLists(); }
+    function deleteCompany(id) { if(confirm("Are you sure?")) { db.companies = db.companies.filter(i => i.id !== id); sync(); renderLists(); } }
+    function editCompany(id) {
+        const c = db.companies.find(i => i.id === id);
+        document.getElementById('editCompId').value = c.id;
+        document.getElementById('compName').value = c.name || ''; document.getElementById('compAddress').value = c.address || '';
+        document.getElementById('compReg').value = c.reg || ''; document.getElementById('compContact').value = c.contact || '';
+        document.getElementById('compWpPp').value = c.wppp || ''; document.getElementById('compEmail').value = c.email || '';
+        document.getElementById('lodgerName').value = c.lodgerName || ''; document.getElementById('lodgerTitle').value = c.lodgerTitle || '';
+        document.getElementById('lodgerNic').value = c.lodgerNic || ''; document.getElementById('lodgerPhone').value = c.lodgerPhone || '';
+        document.getElementById('lodgerMobile').value = c.lodgerMobile || ''; document.getElementById('sigName').value = c.sigName || '';
+        document.getElementById('bank_boc_mvr').value = c.banks?.boc_mvr || ''; document.getElementById('bank_boc_usd').value = c.banks?.boc_usd || '';
+        document.getElementById('compFormTitle').innerText = "Edit Company";
+        document.getElementById('compSaveBtn').classList.add('hidden'); document.getElementById('compUpdateBtn').classList.remove('hidden'); document.getElementById('compCancelBtn').classList.remove('hidden');
+        renderLists();
+    }
+    function getCompData() { return { name: document.getElementById('compName').value, address: document.getElementById('compAddress').value, reg: document.getElementById('compReg').value, contact: document.getElementById('compContact').value, wppp: document.getElementById('compWpPp').value, email: document.getElementById('compEmail').value, lodgerName: document.getElementById('lodgerName').value, lodgerTitle: document.getElementById('lodgerTitle').value, lodgerNic: document.getElementById('lodgerNic').value, lodgerPhone: document.getElementById('lodgerPhone').value, lodgerMobile: document.getElementById('lodgerMobile').value, sigName: document.getElementById('sigName').value, banks: { boc_mvr: document.getElementById('bank_boc_mvr').value, boc_usd: document.getElementById('bank_boc_usd').value } }; }
+    function resetCompanyForm() { document.getElementById('editCompId').value = ""; document.querySelectorAll('#companyPage input, #companyPage textarea').forEach(i => i.value = ""); document.getElementById('compFormTitle').innerText = "Add New Company"; document.getElementById('compSaveBtn').classList.remove('hidden'); document.getElementById('compUpdateBtn').classList.add('hidden'); document.getElementById('compCancelBtn').classList.add('hidden'); renderLists(); }
+
+    function saveBeneficiary() { const d = getBData(); d.id = Date.now(); db.beneficiaries.push(d); sync(); resetBeneForm(); renderLists(); alert("Beneficiary Saved!"); }
+    function updateBeneficiary() { if(!confirm("Confirm Update?")) return; const id = parseInt(document.getElementById('editBeneId').value); const idx = db.beneficiaries.findIndex(i => i.id === id); db.beneficiaries[idx] = {...getBData(), id: id}; sync(); resetBeneForm(); renderLists(); }
+    function deleteBene(id) { if(confirm("Are you sure?")) { db.beneficiaries = db.beneficiaries.filter(i => i.id !== id); sync(); renderLists(); } }
+    function editBene(id) {
+        const b = db.beneficiaries.find(i => i.id === id);
+        document.getElementById('editBeneId').value = b.id;
+        document.getElementById('beneName').value = b.name || ''; document.getElementById('beneAddress').value = b.address || '';
+        document.getElementById('beneBank').value = b.bank || ''; document.getElementById('beneBankAddr').value = b.bankAddr || '';
+        document.getElementById('beneAcc').value = b.acc || ''; document.getElementById('beneSwift').value = b.swift || '';
+        document.getElementById('corrBank').value = b.corrBank || ''; document.getElementById('corrSwift').value = b.corrSwift || '';
+        document.getElementById('beneFormTitle').innerText = "Edit Beneficiary";
+        document.getElementById('beneSaveBtn').classList.add('hidden'); document.getElementById('beneUpdateBtn').classList.remove('hidden'); document.getElementById('beneCancelBtn').classList.remove('hidden');
+        renderLists();
+    }
+    function getBData() { return { name: document.getElementById('beneName').value, address: document.getElementById('beneAddress').value, bank: document.getElementById('beneBank').value, bankAddr: document.getElementById('beneBankAddr').value, acc: document.getElementById('beneAcc').value, swift: document.getElementById('beneSwift').value, corrBank: document.getElementById('corrBank').value, corrSwift: document.getElementById('corrSwift').value }; }
+    function resetBeneForm() { document.getElementById('editBeneId').value = ""; document.querySelectorAll('#beneficiaryPage input, #beneficiaryPage textarea').forEach(i => i.value = ""); document.getElementById('beneFormTitle').innerText = "Add New Beneficiary"; document.getElementById('beneSaveBtn').classList.remove('hidden'); document.getElementById('beneUpdateBtn').classList.add('hidden'); document.getElementById('beneCancelBtn').classList.add('hidden'); renderLists(); }
+
+    function generatePreview() {
+        const c = db.companies.find(i => i.id == document.getElementById('selectCompany').value);
+        const b = db.beneficiaries.find(i => i.id == document.getElementById('selectBene').value);
+        if(!c || !b) return alert("Select records!");
+        document.getElementById('previewContent').innerHTML = `<p><strong>Sender:</strong> ${c.name}</p><p><strong>Beneficiary:</strong> ${b.name}</p><p><strong>Bank:</strong> ${b.bank}</p><p><strong>Amount:</strong> ${document.getElementById('currency').value} ${document.getElementById('amount').value}</p><p class="preview-text">${document.getElementById('amountInWords').value}</p>`;
+        document.getElementById('previewArea').classList.remove('hidden');
+    }
+
+    // --- REPAIRED PDF GENERATION ENGINE ---
+    async function generateBocPDF(mode, isShare) {
+        try {
+            const comp = db.companies.find(c => c.id == document.getElementById('selectCompany').value);
+            const bene = db.beneficiaries.find(b => b.id == document.getElementById('selectBene').value);
+            const { PDFDocument, rgb } = PDFLib;
+            const existingPdfBytes = await fetch('boc-tt-blank.pdf').then(res => res.arrayBuffer());
+            const pdfDoc = await PDFDocument.load(existingPdfBytes);
+            const pages = pdfDoc.getPages();
+
+            const drawField = (key, text) => {
+                const f = config[key];
+                if (!f) return;
+                const page = pages[f.pg];
+                const content = f.spaced ? spaceString(text) : (text || "");
+                if (f.wrap > 0 && content.length > f.wrap) {
+                    const [l1, l2] = smartWrap(content, f.wrap);
+                    page.drawText(l1, { x: f.x1, y: f.y1, size: f.size, color: rgb(0,0,0) });
+                    page.drawText(l2, { x: f.x2, y: f.y2, size: f.size, color: rgb(0,0,0) });
+                } else {
+                    page.drawText(content, { x: f.x1, y: f.y1, size: f.size, color: rgb(0,0,0) });
+                }
+            };
+
+            // Mapping all fields [cite: 2, 3]
+            drawField('date', document.getElementById('transferDate').value);
+            drawField('a_name', comp.name);
+            drawField('a_addr', comp.address);
+            drawField('a_reg', comp.reg);
+            drawField('a_contact', comp.contact);
+            drawField('a_wppp', comp.wppp);
+            drawField('a_email', comp.email);
+            drawField('b_name', comp.lodgerName);
+            drawField('b_title', comp.lodgerTitle);
+            drawField('b_nic', comp.lodgerNic);
+            drawField('b_phone', comp.lodgerPhone);
+            drawField('b_mobile', comp.lodgerMobile);
+            drawField('tt_cur', document.getElementById('currency').value);
+            drawField('tt_amt', document.getElementById('amount').value);
+            drawField('tt_words', document.getElementById('amountInWords').value);
+            drawField('bene_name', bene.name);
+            drawField('bene_addr', bene.address);
+            drawField('bene_bank', bene.bank);
+            drawField('bene_bankaddr', bene.bankAddr);
+            drawField('bene_acc', bene.acc);
+            drawField('bene_swift', bene.swift);
+            drawField('corr_bank', bene.corrBank);
+            drawField('corr_swift', bene.corrSwift);
+            drawField('tt_purpose', document.getElementById('purpose').value);
+            drawField('acc_usd', comp.banks.boc_usd);
+            drawField('acc_mvr', comp.banks.boc_mvr);
+            drawField('sig_name', comp.sigName);
+
+            let typeSuffix = "Full";
+            if(mode === 'p1') { pdfDoc.removePage(1); typeSuffix = "Page1"; }
+            else if (mode === 'p2') { pdfDoc.removePage(0); typeSuffix = "Page2"; }
+
+            const pdfBytes = await pdfDoc.save();
+            const dateStr = document.getElementById('transferDate').value;
+            const beneClean = bene.name.replace(/[^a-z0-9]/gi, '');
+            const fileName = `${dateStr} - ${beneClean} - ${typeSuffix}.pdf`;
+
+            if (isShare && navigator.share) {
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const file = new File([blob], fileName, { type: 'application/pdf' });
+                navigator.share({ files: [file], title: `BOC TT`, text: fileName });
+            } else {
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = fileName;
+                link.click();
+            }
+        } catch (e) { console.error(e); alert("Error generating PDF."); }
+    }
+</script>
+</body>
+</html>
